@@ -195,10 +195,10 @@ with tab1:
 with tab2:
     st.header("Análise por Idioma Original")
     
-    st.subheader("📖 Language Codes Explanation")
-    with st.expander("Click to see language codes"):
+    st.subheader("📖 Explicação dos Idiomas")
+    with st.expander("Clique para ver a legenda de idiomas"):
         idiomas_df = pd.DataFrame([
-            {"Code": code, "Language": name}
+            {"Sigla": code, "Idioma Completo": name}
             for code, name in sorted(IDIOMAS_TRADUCAO.items())
         ])
         st.dataframe(idiomas_df, use_container_width=True)
