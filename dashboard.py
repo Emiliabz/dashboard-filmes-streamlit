@@ -329,13 +329,29 @@ with tab3:
 with tab4:
     st.header("Análise Comparativa por Filme")
     
-    if filmes_selecionados:
+    # Seletor de filmes na página
+    filmes_dict_tab4 = {}
+    todos_filmes_ids_tab4 = sorted(notas["filmeId"].unique().tolist())
+    for fid in todos_filmes_ids_tab4:
+        titulo = filmes.query(f"movieId == {fid}")["title"].values
+        titulo = titulo[0] if len(titulo) > 0 else f"Filme {fid}"
+        filmes_dict_tab4[f"{titulo} ({fid})"] = fid
+    
+    filmes_selecionados_tab4_labels = st.multiselect(
+        "Selecione os filmes para comparação:",
+        list(filmes_dict_tab4.keys()),
+        help="Escolha um ou mais filmes para análise comparativa"
+    )
+    
+    filmes_selecionados_tab4 = [filmes_dict_tab4[label] for label in filmes_selecionados_tab4_labels]
+    
+    if filmes_selecionados_tab4:
         # Análise dos filmes selecionados
-        st.subheader(f"Análise de {len(filmes_selecionados)} filme(s) selecionado(s)")
+        st.subheader(f"Análise de {len(filmes_selecionados_tab4)} filme(s) selecionado(s)")
         
         # Tabela com estatísticas
         dados_filmes = []
-        for filme_id in filmes_selecionados:
+        for filme_id in filmes_selecionados_tab4:
             notas_filme = notas.query(f"filmeId == {filme_id}")["nota"]
             titulo_filme = filmes.query(f"movieId == {filme_id}")["title"].values
             titulo_filme = titulo_filme[0] if len(titulo_filme) > 0 else f"Filme ID {filme_id}"
@@ -356,7 +372,7 @@ with tab4:
         notas_boxplot = []
         labels_boxplot = []
         
-        for filme_id in filmes_selecionados:
+        for filme_id in filmes_selecionados_tab4:
             notas_filme = notas.query(f"filmeId == {filme_id}")["nota"]
             titulo_filme = filmes.query(f"movieId == {filme_id}")["title"].values
             titulo_filme = titulo_filme[0] if len(titulo_filme) > 0 else f"ID {filme_id}"
@@ -372,7 +388,7 @@ with tab4:
         ax.grid(True, alpha=0.3)
         st.pyplot(fig)
     else:
-        st.info("👆 Selecione um ou mais filmes na barra lateral para análise comparativa.")
+        st.info("👆 Selecione um ou mais filmes acima para análise comparativa.")
 
 # ============== RODAPÉ ==============
 st.markdown("---")
