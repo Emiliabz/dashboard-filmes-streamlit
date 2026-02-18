@@ -132,7 +132,7 @@ with tab1:
     
     with col3:
         std_geral = notas["nota"].std()
-        st.metric("Desvio Padrão", f"{std_geral:.2f}", help="Variação das avaliações")
+        st.metric("Variação das Notas", f"{std_geral:.2f}", help="Dispersão das avaliações em torno da média")
     
     with col4:
         total_avaliacoes = len(notas)
