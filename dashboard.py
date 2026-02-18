@@ -13,6 +13,30 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Dicionário de idiomas com tradução
+IDIOMAS_TRADUCAO = {
+    'en': 'English (Inglês)',
+    'ja': 'Japanese (Japonês)',
+    'fr': 'French (Francês)',
+    'de': 'German (Alemão)',
+    'es': 'Spanish (Espanhol)',
+    'it': 'Italian (Italiano)',
+    'ru': 'Russian (Russo)',
+    'pt': 'Portuguese (Português)',
+    'zh': 'Chinese (Chinês)',
+    'ko': 'Korean (Coreano)',
+    'hi': 'Hindi (Hindi)',
+    'ar': 'Arabic (Árabe)',
+    'tr': 'Turkish (Turco)',
+    'pl': 'Polish (Polonês)',
+    'nl': 'Dutch (Holandês)',
+    'sv': 'Swedish (Sueco)',
+    'th': 'Thai (Tailandês)',
+    'fa': 'Persian (Persa)',
+    'vi': 'Vietnamese (Vietnamita)',
+    'id': 'Indonesian (Indonésio)',
+}
+
 # Cache para carregamento dos dados
 @st.cache_data
 def carregar_dados():
@@ -120,48 +144,142 @@ with tab1:
         st.pyplot(fig)
     
     with col2:
-        st.subheader("Distribuição com KDE")
-        fig, ax = plt.subplots(figsize=(10, 5))
-        sns.displot(notas["nota"], kde=True, bins=20)
+        st.subheader("Melhores Filmes por País (Top 20)")
+        # Agregar dados: país, média de notas
+        tmdb_com_notas = tmdb[['original_language', 'title', 'revenue']].copy()
+        
+        # Criar mapa de cores baseado na média de notas por idioma
+        media_por_idioma = tmdb.groupby('original_language')[['vote_average']].mean()
+        media_por_idioma.columns = ['nota_media']
+        media_por_idioma = media_por_idioma.reset_index()
+        media_por_idioma = media_por_idioma.sort_values('nota_media', ascending=False).head(20)
+        
+        fig, ax = plt.subplots(figsize=(10, 8))
+        cores = plt.cm.RdYlGn(np.linspace(0.3, 0.9, len(media_por_idioma)))
+        bars = ax.barh(media_por_idioma['original_language'], media_por_idioma['nota_media'], color=cores)
+        ax.set_xlabel("Nota Média")
+        ax.set_title("Nota Média por País/Idioma (Top 20)")
+        ax.set_xlim(0, 10)
+        
+        # Adicionar valores nas barras
+        for i, v in enumerate(media_por_idioma['nota_media']):
+            ax.text(v + 0.1, i, f'{v:.2f}', va='center')
+        
         st.pyplot(fig)
     
-    st.subheader("Estatísticas Descritivas")
-    st.dataframe(notas["nota"].describe(), use_container_width=True)
+    st.subheader("Estatísticas Descritivas da Distribuição de Notas")
+    stats_df = pd.DataFrame({
+        'Métrica': ['Contagem', 'Média', 'Desvio Padrão', 'Mínimo', '25%', 'Mediana (50%)', '75%', 'Máximo'],
+        'Valor': [
+            f"{notas['nota'].count()}",
+            f"{notas['nota'].mean():.4f}",
+            f"{notas['nota'].std():.4f}",
+            f"{notas['nota'].min():.4f}",
+            f"{notas['nota'].quantile(0.25):.4f}",
+            f"{notas['nota'].median():.4f}",
+            f"{notas['nota'].quantile(0.75):.4f}",
+            f"{notas['nota'].max():.4f}"
+        ]
+    })
+    st.dataframe(stats_df, use_container_width=True)
 
 with tab2:
     st.header("Análise por Idioma Original")
     
-    # Contagem de filmes por idioma
-    contagem_idioma = tmdb_filtrado["original_language"].value_counts().reset_index()
-    contagem_idioma.columns = ["Idioma", "Quantidade"]
+    st.subheader("📖 Explicação dos Idiomas")
+    with st.expander("Clique para ver a legenda de idiomas"):
+        idiomas_df = pd.DataFrame([
+            {"Sigla": code, "Idioma Completo": name}
+            for code, name in sorted(IDIOMAS_TRADUCAO.items())
+        ])
+        st.dataframe(idiomas_df, use_container_width=True)
     
-    col1, col2 = st.columns(2)
+    # Abas para filtros de idioma
+    aba_en, aba_nao_en = st.tabs(["🇬🇧 Filmes em Inglês (EN)", "🌍 Filmes em Outros Idiomas"])
     
-    with col1:
-        st.subheader("Filmes por Idioma (Top 10)")
-        fig, ax = plt.subplots(figsize=(10, 6))
-        top_idiomas = contagem_idioma.head(10)
-        sns.barplot(data=top_idiomas, x="Idioma", y="Quantidade", ax=ax, palette="viridis")
-        ax.set_title(f"Top 10 Idiomas (Filtrado: {idioma_selecionado})")
-        ax.set_xlabel("Idioma")
-        ax.set_ylabel("Quantidade de Filmes")
-        plt.xticks(rotation=45)
+    with aba_en:
+        st.subheader("Análise de Filmes em Inglês")
+        tmdb_en = tmdb[tmdb['original_language'] == 'en']
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.metric("Total de Filmes (EN)", len(tmdb_en))
+            st.write(f"**Percentual:** {(len(tmdb_en)/len(tmdb)*100):.1f}% dos filmes")
+        
+        with col2:
+            st.metric("Nota Média", f"{tmdb_en['vote_average'].mean():.2f}⭐")
+            st.write(f"**Votos Médios:** {tmdb_en['vote_count'].mean():.0f}")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Distribuição de Notas (Inglês)")
+            fig, ax = plt.subplots(figsize=(10, 5))
+            ax.hist(tmdb_en['vote_average'], bins=20, color='steelblue', edgecolor='black', alpha=0.7)
+            ax.set_xlabel("Nota Média")
+            ax.set_ylabel("Frequência")
+            ax.set_title("Distribuição de Notas dos Filmes em Inglês")
+            st.pyplot(fig)
+        
+        with col2:
+            st.subheader("Top 10 Filmes em Inglês por Nota")
+            top_10_en = tmdb_en.nlargest(10, 'vote_average')[['title', 'vote_average', 'vote_count']]
+            top_10_en = top_10_en.reset_index(drop=True)
+            top_10_en.index = top_10_en.index + 1
+            st.dataframe(top_10_en, use_container_width=True)
+    
+    with aba_nao_en:
+        st.subheader("Análise de Filmes em Outros Idiomas (Não Inglês)")
+        tmdb_nao_en = tmdb[tmdb['original_language'] != 'en']
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.metric("Total de Filmes (Não EN)", len(tmdb_nao_en))
+            st.write(f"**Percentual:** {(len(tmdb_nao_en)/len(tmdb)*100):.1f}% dos filmes")
+        
+        with col2:
+            st.metric("Nota Média", f"{tmdb_nao_en['vote_average'].mean():.2f}⭐")
+            st.write(f"**Votos Médios:** {tmdb_nao_en['vote_count'].mean():.0f}")
+        
+        # Contagem de filmes por idioma (não inglês)
+        contagem_nao_en = tmdb_nao_en["original_language"].value_counts().reset_index()
+        contagem_nao_en.columns = ["Idioma", "Quantidade"]
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Filmes por Idioma (Top 10 - Não Inglês)")
+            fig, ax = plt.subplots(figsize=(10, 6))
+            top_idiomas_nao_en = contagem_nao_en.head(10)
+            sns.barplot(data=top_idiomas_nao_en, x="Idioma", y="Quantidade", ax=ax, palette="viridis")
+            ax.set_title("Top 10 Idiomas (Não Inglês)")
+            ax.set_xlabel("Idioma")
+            ax.set_ylabel("Quantidade de Filmes")
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
+        
+        with col2:
+            st.subheader("Proporção de Países (Não Inglês)")
+            fig, ax = plt.subplots(figsize=(8, 6))
+            top_5_nao_en = contagem_nao_en.head(5)
+            outros_nao_en = contagem_nao_en.iloc[5:]["Quantidade"].sum()
+            if outros_nao_en > 0:
+                dados_pie_nao_en = pd.concat([top_5_nao_en, pd.DataFrame({"Idioma": ["Outros"], "Quantidade": [outros_nao_en]})])
+            else:
+                dados_pie_nao_en = top_5_nao_en
+            ax.pie(dados_pie_nao_en["Quantidade"], labels=dados_pie_nao_en["Idioma"], autopct='%1.1f%%')
+            ax.set_title("Distribuição de Países (Não Inglês)")
+            st.pyplot(fig)
+        
+        st.subheader("Distribuição de Notas (Não Inglês)")
+        fig, ax = plt.subplots(figsize=(10, 5))
+        ax.hist(tmdb_nao_en['vote_average'], bins=20, color='coral', edgecolor='black', alpha=0.7)
+        ax.set_xlabel("Nota Média")
+        ax.set_ylabel("Frequência")
+        ax.set_title("Distribuição de Notas dos Filmes em Outros Idiomas")
         st.pyplot(fig)
-    
-    with col2:
-        st.subheader("Proporção de Idiomas")
-        fig, ax = plt.subplots(figsize=(8, 6))
-        top_5_idiomas = contagem_idioma.head(5)
-        outros = contagem_idioma.iloc[5:]["Quantidade"].sum()
-        if outros > 0:
-            dados_pie = pd.concat([top_5_idiomas, pd.DataFrame({"Idioma": ["Outros"], "Quantidade": [outros]})])
-        else:
-            dados_pie = top_5_idiomas
-        ax.pie(dados_pie["Quantidade"], labels=dados_pie["Idioma"], autopct='%1.1f%%')
-        ax.set_title("Distribuição de Idiomas")
-        st.pyplot(fig)
-    
-    st.dataframe(contagem_idioma.head(20), use_container_width=True)
 
 with tab3:
     st.header("Análise Financeira (TMDB)")
