@@ -83,16 +83,25 @@ todas_linguas = ['Todos'] + sorted(tmdb["original_language"].unique().tolist())
 idioma_selecionado = st.sidebar.selectbox(
     "Filtrar por Idioma Original:",
     todas_linguas,
+    format_func=lambda x: f"Todos os idiomas" if x == 'Todos' else f"{IDIOMAS_TRADUCAO.get(x, x)} ({x})",
     help="Selecione um idioma para filtrar os dados do TMDB"
 )
 
 # Filtro por filmeId
 todos_filmes_ids = sorted(notas["filmeId"].unique().tolist())
-filmes_selecionados = st.sidebar.multiselect(
+filmes_dict = {}
+for fid in todos_filmes_ids:
+    titulo = filmes.query(f"movieId == {fid}")["title"].values
+    titulo = titulo[0] if len(titulo) > 0 else f"Filme {fid}"
+    filmes_dict[f"{titulo} ({fid})"] = fid
+
+filmes_selecionados_labels = st.sidebar.multiselect(
     "Selecione Filmes por ID (para análise detalhada):",
-    todos_filmes_ids,
+    list(filmes_dict.keys()),
     help="Selecione um ou mais filmes para análise comparativa"
 )
+
+filmes_selecionados = [filmes_dict[label] for label in filmes_selecionados_labels]
 
 # Aplicar filtros ao dataset tmdb
 tmdb_filtrado = tmdb.copy()
