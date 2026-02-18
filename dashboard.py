@@ -83,25 +83,16 @@ todas_linguas = ['Todos'] + sorted(tmdb["original_language"].unique().tolist())
 idioma_selecionado = st.sidebar.selectbox(
     "Filtrar por Idioma Original:",
     todas_linguas,
-    format_func=lambda x: f"Todos os idiomas" if x == 'Todos' else f"{IDIOMAS_TRADUCAO.get(x, x)} ({x})",
     help="Selecione um idioma para filtrar os dados do TMDB"
 )
 
 # Filtro por filmeId
 todos_filmes_ids = sorted(notas["filmeId"].unique().tolist())
-filmes_dict = {}
-for fid in todos_filmes_ids:
-    titulo = filmes.query(f"movieId == {fid}")["title"].values
-    titulo = titulo[0] if len(titulo) > 0 else f"Filme {fid}"
-    filmes_dict[f"{titulo} ({fid})"] = fid
-
-filmes_selecionados_labels = st.sidebar.multiselect(
+filmes_selecionados = st.sidebar.multiselect(
     "Selecione Filmes por ID (para análise detalhada):",
-    list(filmes_dict.keys()),
+    todos_filmes_ids,
     help="Selecione um ou mais filmes para análise comparativa"
 )
-
-filmes_selecionados = [filmes_dict[label] for label in filmes_selecionados_labels]
 
 # Aplicar filtros ao dataset tmdb
 tmdb_filtrado = tmdb.copy()
@@ -293,84 +284,38 @@ with tab2:
 with tab3:
     st.header("Análise Financeira (TMDB)")
     
-    # Abas para análise por idioma
-    aba_financeira_en, aba_financeira_nao_en = st.tabs(["💰 Inglês (en)", "💵 Outros Idiomas"])
+    col1, col2 = st.columns(2)
     
-    with aba_financeira_en:
-        st.subheader("Análise Financeira - Filmes em Inglês (EN)")
-        tmdb_en = tmdb[tmdb['original_language'] == 'en']
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Distribuição de Receita (Inglês)")
-            com_receita_en = tmdb_en.query("revenue > 0")
-            if len(com_receita_en) > 0:
-                fig, ax = plt.subplots(figsize=(10, 5))
-                sns.histplot(com_receita_en["revenue"], kde=True, ax=ax, bins=30, color='steelblue')
-                ax.set_title(f"Distribuição de Receita - Filmes em Inglês (com receita > 0)")
-                ax.set_xlabel("Receita ($)")
-                ax.set_ylabel("Frequência")
-                st.pyplot(fig)
-                
-                st.metric("Receita Média (EN)", f"${com_receita_en['revenue'].mean():,.0f}")
-                st.write(f"**Filmes com receita:** {len(com_receita_en)} de {len(tmdb_en)}")
-            else:
-                st.info("Nenhum filme em inglês com receita > 0.")
-        
-        with col2:
-            st.subheader("Distribuição de Orçamento (Inglês)")
-            com_orcamento_en = tmdb_en.query("budget > 0")
-            if len(com_orcamento_en) > 0:
-                fig, ax = plt.subplots(figsize=(10, 5))
-                sns.histplot(com_orcamento_en["budget"], kde=True, ax=ax, bins=30, color='coral')
-                ax.set_title(f"Distribuição de Orçamento - Filmes em Inglês (com orçamento > 0)")
-                ax.set_xlabel("Orçamento ($)")
-                ax.set_ylabel("Frequência")
-                st.pyplot(fig)
-                
-                st.metric("Orçamento Médio (EN)", f"${com_orcamento_en['budget'].mean():,.0f}")
-                st.write(f"**Filmes com orçamento:** {len(com_orcamento_en)} de {len(tmdb_en)}")
-            else:
-                st.info("Nenhum filme em inglês com orçamento > 0.")
+    with col1:
+        st.subheader("Distribuição de Receita")
+        # Filmes com receita > 0
+        com_receita = tmdb_filtrado.query("revenue > 0")
+        if len(com_receita) > 0:
+            fig, ax = plt.subplots(figsize=(10, 5))
+            sns.histplot(com_receita["revenue"], kde=True, ax=ax, bins=30)
+            ax.set_title(f"Distribuição de Receita (Filmes com receita > 0)")
+            ax.set_xlabel("Receita ($)")
+            ax.set_ylabel("Frequência")
+            st.pyplot(fig)
+            
+            st.metric("Receita Média (com receita)", f"${com_receita['revenue'].mean():,.0f}")
+        else:
+            st.info("Nenhum filme com receita > 0 para este filtro.")
     
-    with aba_financeira_nao_en:
-        st.subheader("Análise Financeira - Filmes em Outros Idiomas")
-        tmdb_nao_en = tmdb[tmdb['original_language'] != 'en']
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Distribuição de Receita (Não Inglês)")
-            com_receita_nao_en = tmdb_nao_en.query("revenue > 0")
-            if len(com_receita_nao_en) > 0:
-                fig, ax = plt.subplots(figsize=(10, 5))
-                sns.histplot(com_receita_nao_en["revenue"], kde=True, ax=ax, bins=30, color='seagreen')
-                ax.set_title(f"Distribuição de Receita - Filmes Não-Inglês (com receita > 0)")
-                ax.set_xlabel("Receita ($)")
-                ax.set_ylabel("Frequência")
-                st.pyplot(fig)
-                
-                st.metric("Receita Média (Não-EN)", f"${com_receita_nao_en['revenue'].mean():,.0f}")
-                st.write(f"**Filmes com receita:** {len(com_receita_nao_en)} de {len(tmdb_nao_en)}")
-            else:
-                st.info("Nenhum filme não-inglês com receita > 0.")
-        
-        with col2:
-            st.subheader("Distribuição de Orçamento (Não Inglês)")
-            com_orcamento_nao_en = tmdb_nao_en.query("budget > 0")
-            if len(com_orcamento_nao_en) > 0:
-                fig, ax = plt.subplots(figsize=(10, 5))
-                sns.histplot(com_orcamento_nao_en["budget"], kde=True, ax=ax, bins=30, color='mediumpurple')
-                ax.set_title(f"Distribuição de Orçamento - Filmes Não-Inglês (com orçamento > 0)")
-                ax.set_xlabel("Orçamento ($)")
-                ax.set_ylabel("Frequência")
-                st.pyplot(fig)
-                
-                st.metric("Orçamento Médio (Não-EN)", f"${com_orcamento_nao_en['budget'].mean():,.0f}")
-                st.write(f"**Filmes com orçamento:** {len(com_orcamento_nao_en)} de {len(tmdb_nao_en)}")
-            else:
-                st.info("Nenhum filme não-inglês com orçamento > 0.")
+    with col2:
+        st.subheader("Distribuição de Orçamento")
+        com_orcamento = tmdb_filtrado.query("budget > 0")
+        if len(com_orcamento) > 0:
+            fig, ax = plt.subplots(figsize=(10, 5))
+            sns.histplot(com_orcamento["budget"], kde=True, ax=ax, bins=30)
+            ax.set_title(f"Distribuição de Orçamento (Filmes com orçamento > 0)")
+            ax.set_xlabel("Orçamento ($)")
+            ax.set_ylabel("Frequência")
+            st.pyplot(fig)
+            
+            st.metric("Orçamento Médio (com orçamento)", f"${com_orcamento['budget'].mean():,.0f}")
+        else:
+            st.info("Nenhum filme com orçamento > 0 para este filtro.")
 
 with tab4:
     st.header("Análise Comparativa por Filme")
